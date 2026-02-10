@@ -10,13 +10,13 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 @TeleOp(name = "TwoWheel Offset Auto Tuner")
 public class TwoWheelOffsetAutoTuner extends LinearOpMode {
 
-    // Tuning parameters
-    public static double K = 0.075; // adjustment multiplier
+    // ===== TUNING PARAMETERS (dashboard editable) =====
+    public static double K = 0.075;
     public static int ITERATIONS = 10;
     public static int SPINS_PER_ITERATION = 3;
-    public static double SPIN_POWER = 0.1; // slow constant rotation power
+    public static double SPIN_POWER = 0.12;
 
-    // Starting offsets (load from last run or approximate)
+    // ===== INITIAL OFFSETS (from last run or rough guess) =====
     public static double forwardOffset = -5.8;
     public static double lateralOffset = -2.4;
 
@@ -25,42 +25,50 @@ public class TwoWheelOffsetAutoTuner extends LinearOpMode {
 
         FtcDashboard dashboard = FtcDashboard.getInstance();
 
-        // Initialize drive
+        // Initialize localizer + drive
         TwoWheelLocalizer localizer = new TwoWheelLocalizer(hardwareMap);
+        MecanumDrive drive = new MecanumDrive(hardwareMap, localizer);
 
-        telemetry.addLine("Starting Two-Wheel Auto Tuning...");
+        // Apply starting offsets
+        localizer.setOffsets(forwardOffset, lateralOffset);
+
+        telemetry.addLine("Two-Wheel Offset Auto Tuner Ready");
+        telemetry.addLine("Robot will spin automatically");
         telemetry.update();
 
         waitForStart();
 
         for (int iter = 0; iter < ITERATIONS && opModeIsActive(); iter++) {
 
-            double sumDeltaX = 0;
-            double sumDeltaY = 0;
+            double sumDeltaX = 0.0;
+            double sumDeltaY = 0.0;
 
             for (int spin = 0; spin < SPINS_PER_ITERATION && opModeIsActive(); spin++) {
 
-                // Reset pose to zero for accurate delta measurement
+                // Ensure robot is fully stopped
+                drive.setDrivePower(new Pose2d());
+                sleep(200);
+
+                // Reset pose for isolated measurement
                 localizer.setPose(new Pose2d());
 
-                // Spin in place slowly
-                double spinTime = 0.0;
-                double spinDuration = 4000; // milliseconds per spin (adjust for your robot)
-                long startTime = System.currentTimeMillis();
+                double startHeading = localizer.getPose().getHeading();
 
-                while (System.currentTimeMillis() - startTime < spinDuration && opModeIsActive()) {
-                    // Apply slow turn
-                    localizer.setDrivePower(new Pose2d(0, 0, SPIN_POWER));
+                // Spin until ~360 degrees rotation
+                while (opModeIsActive() &&
+                        Math.abs(localizer.getPose().getHeading() - startHeading)
+                                < Math.toRadians(360)) {
 
-                    // Update localizer
+                    drive.setDrivePower(new Pose2d(0, 0, SPIN_POWER));
+                    drive.update();
                     localizer.update();
 
-                    // Small sleep to avoid busy loop
                     sleep(10);
                 }
 
                 // Stop robot
-                localizer.setDrivePower(new Pose2d());
+                drive.setDrivePower(new Pose2d());
+                sleep(150);
 
                 // Measure drift
                 Pose2d pose = localizer.getPose();
@@ -69,36 +77,42 @@ public class TwoWheelOffsetAutoTuner extends LinearOpMode {
 
                 telemetry.addData("Iteration", iter + 1);
                 telemetry.addData("Spin", spin + 1);
-                telemetry.addData("ΔX this spin", pose.getX());
-                telemetry.addData("ΔY this spin", pose.getY());
+                telemetry.addData("ΔX (in)", pose.getX());
+                telemetry.addData("ΔY (in)", pose.getY());
+                telemetry.addData("Heading (deg)",
+                        Math.toDegrees(pose.getHeading()));
                 telemetry.update();
 
-                sleep(250); // brief pause between spins
+                sleep(250);
             }
 
             // Average drift over spins
             double avgDeltaX = sumDeltaX / SPINS_PER_ITERATION;
             double avgDeltaY = sumDeltaY / SPINS_PER_ITERATION;
 
-            // Update offsets
+            // Update offsets (sign may be flipped if divergence occurs)
             forwardOffset -= K * avgDeltaX;
             lateralOffset -= K * avgDeltaY;
 
-            telemetry.addData("Iteration", iter + 1);
+            // Apply new offsets immediately
+            localizer.setOffsets(forwardOffset, lateralOffset);
+
+            telemetry.addLine("---- Iteration Complete ----");
             telemetry.addData("Avg ΔX", avgDeltaX);
             telemetry.addData("Avg ΔY", avgDeltaY);
-            telemetry.addData("Updated forwardOffset", forwardOffset);
-            telemetry.addData("Updated lateralOffset", lateralOffset);
+            telemetry.addData("forwardOffset", forwardOffset);
+            telemetry.addData("lateralOffset", lateralOffset);
             telemetry.update();
+
+            sleep(500);
         }
 
-        // Final results
-        telemetry.addLine("Tuning Complete");
-        telemetry.addData("Final forwardOffset", forwardOffset);
-        telemetry.addData("Final lateralOffset", lateralOffset);
+        telemetry.addLine("TUNING COMPLETE");
+        telemetry.addData("FINAL forwardOffset", forwardOffset);
+        telemetry.addData("FINAL lateralOffset", lateralOffset);
         telemetry.update();
 
-        // Keep program running so you can read dashboard
+        // Keep alive for dashboard viewing
         while (opModeIsActive()) {
             sleep(50);
         }
