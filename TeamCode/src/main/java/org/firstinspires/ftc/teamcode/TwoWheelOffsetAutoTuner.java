@@ -12,13 +12,13 @@ public class TwoWheelOffsetAutoTuner extends LinearOpMode {
 
     // ===== TUNING PARAMETERS (dashboard editable) =====
     public static double K = 0.075;
-    public static int ITERATIONS = 10;
+    public static int ITERATIONS = 8;
     public static int SPINS_PER_ITERATION = 3;
     public static double SPIN_POWER = 0.275; // Spin motor power
 
     // ===== INITIAL OFFSETS (from last run or rough guess) =====
     public static double forwardOffset = -5.8;
-    public static double lateralOffset = -2.4;
+    public static double lateralOffset = 2.4;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -111,8 +111,8 @@ public class TwoWheelOffsetAutoTuner extends LinearOpMode {
             double avgDeltaY = sumDeltaY / SPINS_PER_ITERATION;
 
             // Update offsets
-            forwardOffset -= K * avgDeltaX;
-            lateralOffset -= K * avgDeltaY;
+            forwardOffset -= K * avgDeltaY;
+            lateralOffset -= K * avgDeltaX;
 
             // Apply new offsets immediately
             if (drive.localizer instanceof TwoDeadWheelLocalizer) {
