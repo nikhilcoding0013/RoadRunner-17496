@@ -134,13 +134,8 @@ public final class MecanumDrive {
             leftBack = new OverflowEncoder(new RawEncoder(MecanumDrive.this.leftBack));
             rightBack = new OverflowEncoder(new RawEncoder(MecanumDrive.this.rightBack));
             rightFront = new OverflowEncoder(new RawEncoder(MecanumDrive.this.rightFront));
-            leftFront.setDirection(DcMotorEx.Direction.REVERSE);
-            leftBack.setDirection(DcMotorEx.Direction.REVERSE);
 
             imu = lazyImu.get();
-
-            // TODO: reverse encoders if needed
-
 
             this.pose = pose;
         }
@@ -232,6 +227,9 @@ public final class MecanumDrive {
         rightBack = hardwareMap.get(DcMotorEx.class, "rightBack");
         rightFront = hardwareMap.get(DcMotorEx.class, "rightFront");
 
+        leftFront.setDirection(DcMotorEx.Direction.REVERSE);
+        leftBack.setDirection(DcMotorEx.Direction.REVERSE);
+        
         leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
