@@ -3,7 +3,6 @@ package org.firstinspires.ftc.teamcode;
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.Pose2d;
-import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -15,7 +14,7 @@ public class TwoWheelOffsetAutoTuner extends LinearOpMode {
     public static double K = 0.075;
     public static int ITERATIONS = 10;
     public static int SPINS_PER_ITERATION = 3;
-    public static double SPIN_POWER = 0.275; // Updated spin power
+    public static double SPIN_POWER = 0.275; // Spin motor power
 
     // ===== INITIAL OFFSETS (from last run or rough guess) =====
     public static double forwardOffset = -5.8;
@@ -46,27 +45,51 @@ public class TwoWheelOffsetAutoTuner extends LinearOpMode {
             double sumDeltaX = 0.0;
             double sumDeltaY = 0.0;
 
-            for (int spin = 0; spin < SPINS_PER_ITERATION && opModeIsActive(); spin++) {
+            for (int spinNum = 0; spinNum < SPINS_PER_ITERATION && opModeIsActive(); spinNum++) {
 
                 // Stop robot before each spin
-                drive.setDrivePowers(new PoseVelocity2d(new com.acmerobotics.roadrunner.Vector2d(0, 0), 0));
+                drive.leftFront.setPower(0);
+                drive.leftBack.setPower(0);
+                drive.rightFront.setPower(0);
+                drive.rightBack.setPower(0);
                 sleep(200);
 
                 // Reset pose for isolated measurement
                 drive.localizer.setPose(new Pose2d(0, 0, 0));
-                double startHeading = drive.localizer.getPose().heading.toDouble();
 
-                // Spin in place until approximately 360 degrees rotation
-                while (opModeIsActive() &&
-                        Math.abs(drive.localizer.getPose().heading.toDouble() - startHeading) < 2 * Math.PI) {
+                double lastHeading = drive.localizer.getPose().heading.toDouble();
+                int halfSpins = 0; // count half rotations
 
-                    // True in-place spin
-                    drive.leftFront.setPower(-SPIN_POWER);
-                    drive.leftBack.setPower(-SPIN_POWER);
+                // Spin until 1 full rotation (2 half spins)
+                while (opModeIsActive() && halfSpins < 2) {
+
+                    double heading = drive.localizer.getPose().heading.toDouble();
+
+                    // Zero-crossing detection for half spin
+                    if (lastHeading < 0 && heading >= 0) halfSpins++;
+                    if (lastHeading > 0 && heading <= 0) halfSpins++;
+
+                    lastHeading = heading;
+
+                    // Spin motors (keep same direction as before)
+                    drive.leftFront.setPower(SPIN_POWER);
+                    drive.leftBack.setPower(SPIN_POWER);
                     drive.rightFront.setPower(SPIN_POWER);
                     drive.rightBack.setPower(SPIN_POWER);
 
+                    // Update pose
                     drive.updatePoseEstimate();
+
+                    // Telemetry updates during spin
+                    Pose2d pose = drive.localizer.getPose();
+                    telemetry.addData("Iteration", iter + 1);
+                    telemetry.addData("Spin", spinNum + 1);
+                    telemetry.addData("Half Spins", halfSpins);
+                    telemetry.addData("Heading (deg)", Math.toDegrees(pose.heading.toDouble()));
+                    telemetry.addData("ΔX (in)", pose.position.x);
+                    telemetry.addData("ΔY (in)", pose.position.y);
+                    telemetry.update();
+
                     sleep(10);
                 }
 
@@ -78,18 +101,9 @@ public class TwoWheelOffsetAutoTuner extends LinearOpMode {
                 sleep(150);
 
                 // Measure drift from spin
-                Pose2d pose = drive.localizer.getPose();
-                sumDeltaX += pose.position.x;
-                sumDeltaY += pose.position.y;
-
-                telemetry.addData("Iteration", iter + 1);
-                telemetry.addData("Spin", spin + 1);
-                telemetry.addData("ΔX (in)", pose.position.x);
-                telemetry.addData("ΔY (in)", pose.position.y);
-                telemetry.addData("Heading (deg)", Math.toDegrees(pose.heading.toDouble()));
-                telemetry.update();
-
-                sleep(250);
+                Pose2d finalPose = drive.localizer.getPose();
+                sumDeltaX += finalPose.position.x;
+                sumDeltaY += finalPose.position.y;
             }
 
             // Average drift over spins
