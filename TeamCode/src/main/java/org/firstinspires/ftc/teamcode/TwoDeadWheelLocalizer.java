@@ -39,7 +39,7 @@ public final class TwoDeadWheelLocalizer implements Localizer {
     private int lastParPos, lastPerpPos;
     private Rotation2d lastHeading;
 
-    private double inPerTick = 2 * Math.PI * (0.985*(48/48.1017)) / 8192;
+    public double inPerTick = 2 * Math.PI * (0.985*(48/48.1017)) / 8192;
     private Pose2d spinStartPose = new Pose2d(0, 0, 0);
 
     private double lastRawHeadingVel, headingVelOffset;
@@ -81,6 +81,7 @@ public final class TwoDeadWheelLocalizer implements Localizer {
         PARAMS.perpXTicks = forwardInches / inPerTick;
         PARAMS.parYTicks = lateralInches / inPerTick;
     }
+
 
     @Override
     public void setPose(Pose2d pose) {

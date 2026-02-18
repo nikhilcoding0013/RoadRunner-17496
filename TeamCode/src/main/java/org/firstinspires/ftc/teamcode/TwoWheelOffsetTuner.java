@@ -12,9 +12,7 @@ public class TwoWheelOffsetTuner extends LinearOpMode {
 
         MecanumDrive drive = new MecanumDrive(hardwareMap, new Pose2d(0, 0, 0));
         TwoDeadWheelLocalizer localizer = (TwoDeadWheelLocalizer) drive.localizer;
-
-        localizer.setOffsets(0, 0);
-
+        localizer.setOffsets(-2.729, 1.504);
         telemetry.addLine("Ready. Press Play to spin.");
         telemetry.update();
         waitForStart();
@@ -34,7 +32,7 @@ public class TwoWheelOffsetTuner extends LinearOpMode {
             double heading = localizer.getPose().heading.toDouble();
 
             // Stop
-            if (heading > 1.502) {
+            if (heading > 1.525) {
                 break;
             }
 
